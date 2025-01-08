@@ -1,27 +1,89 @@
-# Practice Task - "Data tables"
+# Practice Task - "Http requests"
 
 Welcome!
 This library displays JSON data from HTTP request using configuration files with the following parameters:
 
-- `parent` (HTML table ID)  
-- `column.title` (column description)  
-- `column.value` (name of the field or function)
-- `apiUrl` (Url with JSON response)
+## Configuration Parameters
+
+### `parent`:
+- **Description**: ID of the HTML table.
+- **Type**: `string`
+
+### `columns`:
+- **Description**: Array of column configurations.
+- **Type**: `array`
+
+Each column can have:
+
+- **`title`**:
+  - **Description**: Column header text.
+  - **Type**: `string`
+
+- **`value`**:
+  - **Description**: Field name or function to format data.
+  - **Type**: `string | function`
+
+- **`input`** (optional):
+  - **Description**: Input field configuration(s).
+  - **Type**: `object | array`
+
+  Input properties:
+  
+  - **`type`**:
+    - **Description**: Input type (e.g., `text`, `number`, `select`).
+    - **Type**: `string`
+
+  - **`name`**:
+    - **Description**: Name attribute of the input.
+    - **Type**: `string`
+
+  - **`label`** (optional):
+    - **Description**: Label text for the input.
+    - **Type**: `string`
+
+  - **`options`** (for `select`):
+    - **Description**: Dropdown options.
+    - **Type**: `array`
+
+  - **`required`** (optional):
+    - **Description**: Mark input as required.
+    - **Type**: `boolean`
+
+### `apiUrl`:
+- **Description**: URL for fetching JSON data.
+- **Type**: `string`
+
 ### Config example
 ```bash
 {
-  parent: "#usersTable",
+  parent: "#productsTable",
   columns: [
-    { title: "Ім’я", value: "name" },
-    { title: "Прізвище", value: "surname" },
-    { title: "Вік", value: (user) => getAge(user.birthday) },
     {
-      title: "Фото",
-      value: (user) =>
-        `<img src="https://i.pravatar.cc/50?img=${user.id}" alt="${user.name} ${user.surname}"/>`,
+      title: "Назва",
+      value: "title",
+      input: { type: "text", required: true },
+    },
+    {
+      title: "Ціна",
+      value: (product) => `${product.price} ${product.currency}`,
+      input: [
+        { type: "number", name: "price", label: "Ціна", required: true },
+        {
+          type: "select",
+          name: "currency",
+          label: "Валюта",
+          options: ["$", "€", "₴"],
+          required: false,
+        },
+      ],
+    },
+    {
+      title: "Колір",
+      value: (product) => getColorLabel(product.color),
+      input: { type: "color", name: "color" },
     },
   ],
-  apiUrl: "https://mock-api.shpp.me/anemeritskyy/users",
+  apiUrl: "https://mock-api.shpp.me/anemeritskyy/products",
 }
 ```
 ### Result

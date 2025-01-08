@@ -5,7 +5,10 @@ function DataTable(config) {
     response.then((response) => {
       let tableName = config.parent.slice(1);
       let targetTable = document.getElementById(tableName);
-      targetTable.innerHTML = `
+      let addItemModalWindow = getModalWindow(config, tableName);
+      targetTable.innerHTML =
+        addItemModalWindow +
+        `
     <table class="response-table">
     <thead>
         <tr class="response-tr">
@@ -37,7 +40,7 @@ function DataTable(config) {
           })
         );
         row.push(
-          `<td class="response-td"><button data-id="${key}" class="btn-remove" onclick="deleteItem('${config.apiUrl}', '${tableName}', this)">Видалити</button></td>\n`
+          `<td class="response-td"><button data-id="${key}" class="btn btn-remove" onclick="deleteItem('${config.apiUrl}', '${tableName}', this)">Видалити</button></td>\n`
         );
 
         return `<tr class="response-tr" id="${
@@ -47,8 +50,168 @@ function DataTable(config) {
       .join("")}
     </tbody>
     </table>`;
+      addModalListener(tableName);
+      addFormListener(tableName, config);
     });
   }
+}
+
+// Creates a modal window with a form for adding new items to the table, using config for dynamic field generation
+function getModalWindow(config, tableName) {
+  return `
+  <button class="btn btn-add" id="btnAdd${tableName}">Додати</button>
+  <div id="addModal${tableName}" class="modal">
+    <div class="modal-content">
+      <span class="close ${tableName}">&times;</span>
+      <form id="${tableName}-form">
+      <table>
+        <tbody>
+        ${config.columns
+          .map(
+            (column) => `
+          <tr>
+          <td class="add-title">${column.title}</td>
+          <td class="add-title">${getElementForItem(
+            column.input,
+            column.name,
+            column.title,
+            column.value
+          )}</td>
+          </tr>
+          `
+          )
+          .join("")}
+        </tbody>
+      </table>
+      </form>
+    </div>
+  </div>
+  `;
+}
+
+// Adds a listener to handle form submission on pressing Enter, validating required fields,
+// collecting form data, and sending it as a JSON POST request to the provided API URL.
+function addFormListener(tableName, config) {
+  document
+    .getElementById(`${tableName}-form`)
+    .addEventListener("keydown", function (event) {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        const requiredFields = this.querySelectorAll(
+          "input[required], select[required], textarea[required]"
+        );
+
+        let allFilled = true;
+        requiredFields.forEach((field) => {
+          if (!field.value.trim()) {
+            allFilled = false;
+            field.style.borderColor = "red";
+          } else {
+            field.style.borderColor = "";
+          }
+        });
+
+        if (allFilled) {
+          const formData = new FormData(this);
+          let object = {};
+
+          formData.forEach((value, key) => {
+            const inputElement = this.querySelector(`[name="${key}"]`);
+
+            if (inputElement.type === "number") {
+              object[key] = value.trim() !== "" ? parseFloat(value) : null;
+            } else {
+              object[key] = value;
+            }
+          });
+
+          let json = JSON.stringify(object);
+
+          fetch(config.apiUrl, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: json,
+          })
+            .then((response) => {
+              response.json();
+              if (response.ok) {
+                let modal = document.getElementById("addModal" + tableName);
+                modal.style.display = "none";
+                DataTable(config);
+              }
+            })
+            .then((data) => {
+              console.log("Success:", data);
+            })
+            .catch((error) => {
+              console.error("Error:", error);
+            });
+        }
+      }
+    });
+}
+
+// Generates form input elements (e.g., text inputs, selects) based on the provided configuration, supporting both single and multiple inputs.
+function getElementForItem(
+  elementInput,
+  elementName,
+  columnLabel,
+  parrentName
+) {
+  if (Array.isArray(elementInput)) {
+    return elementInput
+      .map((input) => {
+        if (input.type === "select") {
+          return `
+            <label for="${elementName}">${input.label}</label>
+            <select name="${input.name}">
+              ${input.options
+                .map((option) => `<option value="${option}">${option}</option>`)
+                .join("")}
+            </select>
+          `;
+        } else {
+          return `
+    ${
+      input.label !== columnLabel
+        ? `<label for="${input.name}">${input.label || ""}</label>`
+        : ""
+    }
+    <input type="${input.type}" name="${input.name}" ${
+            input.required ? "required" : ""
+          } />
+  `;
+        }
+      })
+      .join("");
+  } else {
+    return `
+      <input type="${elementInput.type}" name="${
+      elementInput.name || parrentName
+    }" ${elementInput.required ? "required" : ""} />
+    `;
+  }
+}
+
+// Adds event listeners to open and close the modal window for a specific table, handling clicks on the open button, close button, and outside the modal.
+function addModalListener(tableName) {
+  let modal = document.getElementById("addModal" + tableName);
+  let btn = document.getElementById("btnAdd" + tableName);
+  let span = document.getElementsByClassName("close " + tableName)[0];
+
+  btn.onclick = function () {
+    modal.style.display = "block";
+  };
+  span.onclick = function () {
+    modal.style.display = "none";
+  };
+  window.addEventListener("click", function (event) {
+    if (event.target == modal) {
+      modal.style.display = "none";
+    }
+  });
 }
 
 // Asynchronous function to delete an item from the server and remove its corresponding row from the table if the request is successful
@@ -125,13 +288,22 @@ function checkColor(color) {
 const config1 = {
   parent: "#usersTable",
   columns: [
-    { title: "Ім’я", value: "name" },
-    { title: "Прізвище", value: "surname" },
-    { title: "Вік", value: (user) => getAge(user.birthday) },
+    { title: "Ім’я", value: "name", input: { type: "text", required: true } },
+    {
+      title: "Прізвище",
+      value: "surname",
+      input: { type: "text", required: true },
+    },
+    {
+      title: "Вік",
+      value: (user) => getAge(user.birthday),
+      input: { type: "date", name: "birthday", required: true },
+    },
     {
       title: "Фото",
       value: (user) =>
         `<img src="https://i.pravatar.cc/50?img=${user.id}" alt="${user.name} ${user.surname}"/>`,
+      input: { type: "text", name: "avatar", required: true },
     },
   ],
   apiUrl: "https://mock-api.shpp.me/anemeritskyy/users",
@@ -142,12 +314,30 @@ DataTable(config1);
 const config2 = {
   parent: "#productsTable",
   columns: [
-    { title: "Назва", value: "title" },
+    {
+      title: "Назва",
+      value: "title",
+      input: { type: "text", required: true },
+    },
     {
       title: "Ціна",
       value: (product) => `${product.price} ${product.currency}`,
+      input: [
+        { type: "number", name: "price", label: "Ціна", required: true },
+        {
+          type: "select",
+          name: "currency",
+          label: "Валюта",
+          options: ["$", "€", "₴"],
+          required: false,
+        },
+      ],
     },
-    { title: "Колір", value: (product) => getColorLabel(product.color) },
+    {
+      title: "Колір",
+      value: (product) => getColorLabel(product.color),
+      input: { type: "color", name: "color" },
+    },
   ],
   apiUrl: "https://mock-api.shpp.me/anemeritskyy/products",
 };
