@@ -1,0 +1,28 @@
+.response-table {
+  font-family: "Courier New", Courier, monospace;
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 10px;
+}
+.response-th {
+  background-color: lightpink;
+  border: 1px solid black;
+}
+.response-tr {
+  border-bottom: 1px solid black;
+}
+.response-td:first-child {
+  background-color: azure;
+  font-weight: 700;
+  text-align: center;
+  padding: 0;
+}
+.response-td {
+  padding-left: 10px;
+  text-align: center;
+}
+.color {
+  width: 100%;
+  height: 100%;
+  text-align: center;
+}
