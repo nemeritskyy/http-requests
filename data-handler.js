@@ -3,14 +3,18 @@ function DataTable(config) {
   if (config.apiUrl !== undefined) {
     let response = getData(config.apiUrl);
     response.then((response) => {
-      let targetTable = document.getElementById(config.parent.slice(1));
+      let tableName = config.parent.slice(1);
+      let targetTable = document.getElementById(tableName);
       targetTable.innerHTML = `
     <table class="response-table">
     <thead>
         <tr class="response-tr">
             ${config.columns
-              .map((element) => `<th class="response-th">${element.title}</th>\n`)
+              .map(
+                (element) => `<th class="response-th">${element.title}</th>\n`
+              )
               .join("")}
+              <th class="response-th">Дії</th>
         </tr>
     </thead>
     <tbody>
@@ -22,20 +26,48 @@ function DataTable(config) {
         row.push(
           ...config.columns.map((column) => {
             if (typeof column.value === "function") {
-              return `<td class="response-td">${column.value(obj) || ""}</td>\n`;
+              return `<td class="response-td">${
+                column.value(obj) || ""
+              }</td>\n`;
             } else {
-              return `<td class="response-td">${obj[column.value] || ""}</td>\n`;
+              return `<td class="response-td">${
+                obj[column.value] || ""
+              }</td>\n`;
             }
           })
         );
+        row.push(
+          `<td class="response-td"><button data-id="${key}" class="btn-remove" onclick="deleteItem('${config.apiUrl}', '${tableName}', this)">Видалити</button></td>\n`
+        );
 
-        return `<tr class="response-tr">\n${row.join("")}</tr>\n`;
+        return `<tr class="response-tr" id="${
+          tableName + "-" + key
+        }">\n${row.join("")}</tr>\n`;
       })
       .join("")}
     </tbody>
     </table>`;
     });
   }
+}
+
+// Asynchronous function to delete an item from the server and remove its corresponding row from the table if the request is successful
+function deleteItem(url, table, btn) {
+  let itemId = btn.getAttribute("data-id");
+  fetch(url + "/" + itemId, {
+    method: "DELETE",
+  })
+    .then((response) => {
+      if (response.ok) {
+        // Remove the table row associated with the deleted item
+        document.getElementById(table + "-" + itemId).remove();
+      } else {
+        console.error("Failed to delete the item:", response.statusText);
+      }
+    })
+    .catch((error) => {
+      console.error("Error during deletion:", error);
+    });
 }
 
 // Asynchronous function to fetch data from a given URL and return the parsed JSON response
