@@ -4,12 +4,17 @@
   border-collapse: collapse;
   margin-bottom: 10px;
 }
+.response-table img {
+  vertical-align: middle;
+  border-radius: 5px;
+}
 .response-th {
   background-color: lightpink;
   border: 1px solid black;
 }
 .response-tr {
   border-bottom: 1px solid black;
+  height: 50px;
 }
 .response-td:first-child {
   background-color: azure;
@@ -18,8 +23,12 @@
   padding: 0;
 }
 .response-td {
-  padding-left: 10px;
   text-align: center;
+}
+.actions {
+  width: 10px;
+  margin: 0px;
+  padding: 0px;
 }
 .color {
   width: 100%;
@@ -32,18 +41,28 @@
   padding: 10px;
   cursor: pointer;
 }
-.btn-remove {
-  border-radius: 3px;
+.btn-red {
+  border-top-left-radius: 5px;
+  border-bottom-left-radius: 5px;
   background-color: #ff0000;
 }
-.btn-remove:hover {
+.btn-red:hover {
   background-color: lightpink;
   text-decoration: underline;
 }
-.btn-add {
+.btn-green {
+  border-top-right-radius: 5px;
+  border-bottom-right-radius: 5px;
   background-color: green;
-  width: 200px;
   border-bottom: none;
+}
+.btn-green:hover {
+  background-color: lightgreen;
+  text-decoration: underline;
+}
+.btn-add {
+  width: 300px;
+  border-radius: 0px;
 }
 .add-title {
   font-weight: 600;

@@ -17,7 +17,7 @@ function DataTable(config) {
                 (element) => `<th class="response-th">${element.title}</th>\n`
               )
               .join("")}
-              <th class="response-th">Дії</th>
+              <th class="response-th" colspan="2">Дії</th>
         </tr>
     </thead>
     <tbody>
@@ -40,7 +40,13 @@ function DataTable(config) {
           })
         );
         row.push(
-          `<td class="response-td"><button data-id="${key}" class="btn btn-remove" onclick="deleteItem('${config.apiUrl}', '${tableName}', this)">Видалити</button></td>\n`
+          `
+          <td class="actions"><button data-id="${key}" class="btn btn-red" onclick="deleteItem('${
+            config.apiUrl
+          }', '${tableName}', this)">Видалити</button></td>\n
+          <td class="actions"><button data-id="${key}" data-obj='${JSON.stringify(
+            obj
+          )}' class="btn btn-green" onclick="editItem('${tableName}', this)">Редагувати</button></td>\n`
         );
 
         return `<tr class="response-tr" id="${
@@ -59,11 +65,11 @@ function DataTable(config) {
 // Creates a modal window with a form for adding new items to the table, using config for dynamic field generation
 function getModalWindow(config, tableName) {
   return `
-  <button class="btn btn-add" id="btnAdd${tableName}">Додати</button>
+  <button class="btn btn-green btn-add" id="btnAdd${tableName}">Додати</button>
   <div id="addModal${tableName}" class="modal">
     <div class="modal-content">
       <span class="close ${tableName}">&times;</span>
-      <form id="${tableName}-form">
+      <form id="${tableName}-form" data-method="POST" data-id="">
       <table>
         <tbody>
         ${config.columns
@@ -90,67 +96,76 @@ function getModalWindow(config, tableName) {
 }
 
 // Adds a listener to handle form submission on pressing Enter, validating required fields,
-// collecting form data, and sending it as a JSON POST request to the provided API URL.
+// collecting form data, and sending it as a JSON POST/PUT request to the provided API URL.
 function addFormListener(tableName, config) {
-  document
-    .getElementById(`${tableName}-form`)
-    .addEventListener("keydown", function (event) {
-      if (event.key === "Enter") {
-        event.preventDefault();
-        const requiredFields = this.querySelectorAll(
-          "input[required], select[required], textarea[required]"
-        );
+  let form = document.getElementById(`${tableName}-form`);
+  form.addEventListener("keydown", function (event) {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      const requiredFields = this.querySelectorAll(
+        "input[required], select[required], textarea[required]"
+      );
 
-        let allFilled = true;
-        requiredFields.forEach((field) => {
-          if (!field.value.trim()) {
-            allFilled = false;
-            field.style.borderColor = "red";
+      let allFilled = true;
+      requiredFields.forEach((field) => {
+        if (!field.value.trim()) {
+          allFilled = false;
+          field.style.borderColor = "red";
+        } else {
+          field.style.borderColor = "";
+        }
+      });
+
+      if (allFilled) {
+        const formData = new FormData(this);
+        let object = {};
+
+        formData.forEach((value, key) => {
+          const inputElement = this.querySelector(`[name="${key}"]`);
+
+          if (inputElement.type === "number") {
+            object[key] = value.trim() !== "" ? parseFloat(value) : null;
           } else {
-            field.style.borderColor = "";
+            object[key] = value;
           }
         });
 
-        if (allFilled) {
-          const formData = new FormData(this);
-          let object = {};
+        let json = JSON.stringify(object);
 
-          formData.forEach((value, key) => {
-            const inputElement = this.querySelector(`[name="${key}"]`);
-
-            if (inputElement.type === "number") {
-              object[key] = value.trim() !== "" ? parseFloat(value) : null;
-            } else {
-              object[key] = value;
-            }
-          });
-
-          let json = JSON.stringify(object);
-
+        if (form.getAttribute("data-method") === "POST") {
           fetch(config.apiUrl, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
             },
             body: json,
-          })
-            .then((response) => {
-              response.json();
-              if (response.ok) {
-                let modal = document.getElementById("addModal" + tableName);
-                modal.style.display = "none";
-                DataTable(config);
-              }
-            })
-            .then((data) => {
-              console.log("Success:", data);
-            })
-            .catch((error) => {
-              console.error("Error:", error);
-            });
+          }).then((response) => {
+            response.json();
+            if (response.ok) {
+              let modal = document.getElementById("addModal" + tableName);
+              modal.style.display = "none";
+              DataTable(config);
+            }
+          });
+        } else if (form.getAttribute("data-method") === "PUT") {
+          fetch(config.apiUrl + "/" + form.getAttribute("data-id"), {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: json,
+          }).then((response) => {
+            response.json();
+            if (response.ok) {
+              let modal = document.getElementById("addModal" + tableName);
+              modal.style.display = "none";
+              DataTable(config);
+            }
+          });
         }
       }
-    });
+    }
+  });
 }
 
 // Generates form input elements (e.g., text inputs, selects) based on the provided configuration, supporting both single and multiple inputs.
@@ -181,7 +196,7 @@ function getElementForItem(
     }
     <input type="${input.type}" name="${input.name}" ${
             input.required ? "required" : ""
-          } />
+          }/>
   `;
         }
       })
@@ -200,16 +215,23 @@ function addModalListener(tableName) {
   let modal = document.getElementById("addModal" + tableName);
   let btn = document.getElementById("btnAdd" + tableName);
   let span = document.getElementsByClassName("close " + tableName)[0];
+  let resetForm = () => {
+    modal.style.display = "none";
+    let form = document.getElementById(tableName + "-form");
+    form.reset();
+    form.setAttribute("data-id", "");
+    form.setAttribute("data-method", "POST");
+  };
 
   btn.onclick = function () {
     modal.style.display = "block";
   };
   span.onclick = function () {
-    modal.style.display = "none";
+    resetForm();
   };
   window.addEventListener("click", function (event) {
     if (event.target == modal) {
-      modal.style.display = "none";
+      resetForm();
     }
   });
 }
@@ -231,6 +253,27 @@ function deleteItem(url, table, btn) {
     .catch((error) => {
       console.error("Error during deletion:", error);
     });
+}
+
+// Fill fields in modal form useng obj attribute and change form method to PUT
+function editItem(tableName, btn) {
+  let itemId = btn.getAttribute("data-id");
+  form = document.getElementById(tableName + "-form");
+  form.setAttribute("data-id", itemId);
+  form.setAttribute("data-method", "PUT");
+  let objJSON = btn.getAttribute("data-obj");
+  let modal = document.getElementById("addModal" + tableName);
+  modal.style.display = "block";
+
+  const obj = JSON.parse(objJSON);
+  for (let key in obj) {
+    if (obj.hasOwnProperty(key)) {
+      let input = modal.querySelector(`[name="${key}"]`);
+      if (input) {
+        input.value = obj[key];
+      }
+    }
+  }
 }
 
 // Asynchronous function to fetch data from a given URL and return the parsed JSON response
